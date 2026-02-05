@@ -8,6 +8,7 @@ export interface EducationEntry {
 
 export interface ExperienceEntry {
   company: string;
+  jobTitle: string;
   startDate: string;
   endDate: string | null;
   isPresent: boolean;

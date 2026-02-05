@@ -1,0 +1,118 @@
+---
+description: Use conventional commit format for all commit messages
+alwaysApply: true
+---
+
+# Conventional Commits
+
+**REQUIRED**: You MUST use the [Conventional Commits](https://www.conventionalcommits.org/) specification for ALL commit messages. Never use generic terms like "update", "change", "modify" as commit types.
+
+## Format
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+## Commit Types
+
+**ONLY use these approved types** - never invent new types or use synonyms:
+
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation only changes
+- `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc.)
+- `refactor`: A code change that neither fixes a bug nor adds a feature
+- `perf`: A code change that improves performance
+- `test`: Adding missing tests or correcting existing tests
+- `build`: Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm)
+- `ci`: Changes to CI configuration files and scripts
+- `chore`: Other changes that don't modify src or test files
+- `revert`: Reverts a previous commit
+
+**Forbidden types**: update, change, modify, add, remove, delete, improve, enhance - these are NOT valid types. Use `feat`, `fix`, `refactor`, or `chore` instead.
+
+## Scope (Optional)
+
+The scope should be the name of the package/area affected (e.g., `api`, `ui`, `temporal`, `resume-form`).
+
+## Subject
+
+- Use imperative, present tense: "change" not "changed" nor "changes"
+- Don't capitalize the first letter
+- No dot (.) at the end
+- Maximum 72 characters
+
+## Body (Optional)
+
+- Use imperative, present tense
+- Explain the "what" and "why" vs. "how"
+- Can include multiple paragraphs
+- Wrap at 72 characters
+
+## Footer (Optional)
+
+- Reference issues: `Closes #123`, `Fixes #456`
+- Breaking changes: `BREAKING CHANGE: <description>`
+
+## Multiple Changes
+
+When a commit includes multiple changes:
+- If they're all the same type: use one commit with multiple scopes or a general scope
+- If they're different types: split into separate commits OR use the most significant type with a descriptive subject
+
+Example of multiple related changes:
+```
+feat(api,ui): integrate Temporal client and enhance resume form
+
+- Add Temporal client integration in API
+- Add job title field to resume form
+- Update README with setup instructions
+```
+
+## Examples
+
+```
+feat(api): add resume publishing endpoint
+
+Add POST /api/resumes endpoint that accepts resume data and publishes to Kafka.
+
+Closes #42
+```
+
+```
+fix(ui): correct date validation in education form
+
+The date range validation was incorrectly rejecting valid date ranges when the end date was in the current month.
+
+Fixes #15
+```
+
+```
+docs: add setup instructions to README
+
+Add detailed setup instructions for local development including environment variables and database setup.
+```
+
+```
+refactor(temporal): extract workflow execution logic
+
+Move workflow execution logic into a separate service class to improve testability and maintainability.
+```
+
+```
+chore: update dependencies
+
+Update all npm packages to latest versions to address security vulnerabilities.
+```
+
+```
+feat(api,ui): integrate Temporal and enhance resume form
+
+- Integrate Temporal client and workflows in API
+- Add job title field to resume form
+- Add README setup instructions
+```

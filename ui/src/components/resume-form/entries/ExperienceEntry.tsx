@@ -34,31 +34,60 @@ export function ExperienceEntry({
         </button>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Company Name <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          {...register(`experience.${index}.company` as const, {
-            required: 'Company name is required',
-            minLength: {
-              value: 2,
-              message: 'Company name must be at least 2 characters',
-            },
-          })}
-          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            experienceErrors?.company
-              ? 'border-red-500'
-              : 'border-gray-300'
-          }`}
-          placeholder="e.g., Google Inc."
-        />
-        {experienceErrors?.company && (
-          <p className="mt-1 text-sm text-red-600">
-            {experienceErrors.company.message}
-          </p>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Company Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            {...register(`experience.${index}.company` as const, {
+              required: 'Company name is required',
+              minLength: {
+                value: 2,
+                message: 'Company name must be at least 2 characters',
+              },
+            })}
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              experienceErrors?.company
+                ? 'border-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder="e.g., Google Inc."
+          />
+          {experienceErrors?.company && (
+            <p className="mt-1 text-sm text-red-600">
+              {experienceErrors.company.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Job Title <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            {...register(`experience.${index}.jobTitle` as const, {
+              required: 'Job title is required',
+              minLength: {
+                value: 2,
+                message: 'Job title must be at least 2 characters',
+              },
+            })}
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              experienceErrors?.jobTitle
+                ? 'border-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder="e.g., Software Engineer"
+          />
+          {experienceErrors?.jobTitle && (
+            <p className="mt-1 text-sm text-red-600">
+              {experienceErrors.jobTitle.message}
+            </p>
+          )}
+        </div>
       </div>
 
       <DateRangeInput

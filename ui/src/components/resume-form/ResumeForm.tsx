@@ -15,22 +15,23 @@ export function ResumeForm() {
     formState: { errors },
   } = useForm<ResumeFormData>({
     defaultValues: {
-      fullName: '',
-      occupation: '',
-      description: '',
+      fullName: 'john doe',
+      occupation: 'software engineer',
+      description: 'i am a software engineer with a passion for building web applications',
       education: [
         {
-          institution: '',
-          degree: '',
-          startDate: '',
-          endDate: '',
+          institution: 'harvard university',
+          degree: 'bachelor of science in computer science',
+          startDate: '2016-09-01',
+          endDate: '2020-05-01',
         },
       ],
       experience: [
         {
-          company: '',
-          startDate: '',
-          endDate: '',
+          company: 'google',
+          jobTitle: 'software engineer',
+          startDate: '2016-09-01',
+          endDate: '2020-05-01',
         },
       ],
     },
