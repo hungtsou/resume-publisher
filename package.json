@@ -1,0 +1,37 @@
+{
+  "name": "resume-publisher",
+  "version": "1.0.0",
+  "description": "Resume Publisher Monorepo",
+  "private": true,
+  "workspaces": [
+    "api",
+    "ui"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:ui\"",
+    "dev:api": "npm run dev --workspace=api",
+    "dev:ui": "npm run dev --workspace=ui",
+    "build": "npm run build:api && npm run build:ui",
+    "build:api": "npm run build --workspace=api",
+    "build:ui": "npm run build --workspace=ui",
+    "start": "concurrently \"npm run start:api\" \"npm run start:ui\"",
+    "start:api": "npm run start --workspace=api",
+    "start:ui": "npm run preview --workspace=ui",
+    "lint": "npm run lint --workspace=api && npm run lint --workspace=ui",
+    "lint:api": "npm run lint --workspace=api",
+    "lint:ui": "npm run lint --workspace=ui",
+    "docker:up": "docker-compose up",
+    "docker:up:dev": "docker-compose -f docker-compose.dev.yml up",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build",
+    "docker:build:dev": "docker-compose -f docker-compose.dev.yml build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  }
+}

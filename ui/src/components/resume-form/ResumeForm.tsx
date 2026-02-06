@@ -41,6 +41,8 @@ export function ResumeForm() {
     console.log('Form submitted:', data);
     const response = await sendResume(data);
     console.log('Response:', response);
+    // const response = await check()
+    // console.log('Response check:', response);
   };
 
   return (

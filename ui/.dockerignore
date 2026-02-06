@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-ssr/
+*.log
+.env
+.env.local
+.git/
+.gitignore
+.DS_Store
+.eslintrc.cjs
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+README.md
