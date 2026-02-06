@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { checkRoute } from './routes/check-route.js';
 import { resumeRoute } from './routes/resume-route.js';
 import { getTemporalClient, closeTemporalClient } from './temporal/client.js';
+import { getDbPool, closeDbPool } from './db/client.js';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -25,8 +26,18 @@ app.get('/', (_req, res) => {
   res.json({ message: 'Resume Publisher API is running' });
 });
 
-// Initialize Temporal client on startup
+// Initialize Temporal client and database connection on startup
 async function startServer() {
+  // Initialize database connection pool
+  try {
+    getDbPool();
+    console.log('Database connection pool initialized');
+  } catch (error) {
+    console.error('Failed to initialize database connection pool:', error);
+    // Continue without database - API can still run but database operations won't work
+  }
+
+  // Initialize Temporal client
   try {
     await getTemporalClient();
     console.log('Temporal client connected');
@@ -43,13 +54,15 @@ async function startServer() {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing Temporal connection...');
+  console.log('SIGTERM received, closing connections...');
+  await closeDbPool();
   await closeTemporalClient();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('SIGINT received, closing Temporal connection...');
+  console.log('SIGINT received, closing connections...');
+  await closeDbPool();
   await closeTemporalClient();
   process.exit(0);
 });
