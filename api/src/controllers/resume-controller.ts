@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { startExampleWorkflow } from '../temporal/client';
 import { createUser } from '../db/schemas/user';
+import { createResume } from '../db/schemas/resume';
 
 export const sendResume = async (req: Request, res: Response) => {
   try {
@@ -22,8 +22,20 @@ export const sendResume = async (req: Request, res: Response) => {
     // });
 
     const user = await createUser({ userName: name });
+    
+    // Create resume with user ID and resume data
+    const resume = await createResume({
+      userId: user.id,
+      fullName: resumeData.fullName,
+      occupation: resumeData.occupation,
+      description: resumeData.description,
+      education: resumeData.education,
+      experience: resumeData.experience,
+    });
+    
     res.status(200).json({
-      message: 'User created',
+      message: 'Resume created successfully',
+      resume,
       user,
     });
   } catch (error) {
