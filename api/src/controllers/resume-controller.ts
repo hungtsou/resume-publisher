@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
-import { createUser } from '../db/schemas/user';
-import { createResume } from '../db/schemas/resume';
-import { startExampleWorkflow } from '../temporal/client';
+import { type Request, type Response } from 'express';
+import { createUser } from '../db/schemas/user.ts';
+import { createResume } from '../db/schemas/resume.ts';
+import { startExampleWorkflow } from '../temporal/client.ts';
 
 export const sendResume = async (req: Request, res: Response) => {
   try {

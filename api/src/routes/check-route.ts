@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getCheck } from '../controllers/check-controller.js';
+import { getCheck } from '../controllers/check-controller.ts';
 
 const router = Router();
 

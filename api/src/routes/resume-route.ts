@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { sendResume } from '../controllers/resume-controller';
+import { sendResume } from '../controllers/resume-controller.ts';
 
 const router = Router();
 

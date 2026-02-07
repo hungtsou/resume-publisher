@@ -1,4 +1,4 @@
-import { getDbPool } from '../client.js';
+import { getDbPool } from '../client.ts';
 
 /**
  * Resume schema types

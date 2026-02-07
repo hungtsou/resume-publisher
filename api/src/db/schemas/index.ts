@@ -4,5 +4,5 @@
  * Central export point for all database schema types
  */
 
-export * from './user.js';
-export * from './resume.js';
+export * from './user.ts';
+export * from './resume.ts';

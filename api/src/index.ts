@@ -1,11 +1,20 @@
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { checkRoute } from './routes/check-route.js';
-import { resumeRoute } from './routes/resume-route.js';
-import { getTemporalClient, closeTemporalClient } from './temporal/client.js';
-import { getDbPool, closeDbPool } from './db/client.js';
+import { checkRoute } from './routes/check-route.ts';
+import { resumeRoute } from './routes/resume-route.ts';
+import { getTemporalClient, closeTemporalClient } from './temporal/client.ts';
+import { getDbPool, closeDbPool } from './db/client.ts';
+
+// Load environment variables from .env file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const envPath = join(__dirname, '../.env');
+config({ path: envPath });
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
