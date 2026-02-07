@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  resume-publisher-dev:
+    driver: bridge
+
 services:
   temporal:
     image: temporalio/temporal:latest
@@ -14,6 +18,8 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 10
+    networks:
+      - resume-publisher-dev
 
   api:
     build:
@@ -43,6 +49,8 @@ services:
     depends_on:
       - temporal
     restart: unless-stopped
+    networks:
+      - resume-publisher-dev
 
   ui:
     build:
@@ -72,3 +80,30 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    networks:
+      - resume-publisher-dev
+
+  temporal-worker:
+    build:
+      context: ./temporal-worker
+      dockerfile: Dockerfile
+      target: dev
+    container_name: resume-publisher-temporal-worker-dev
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
+      - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-hello-world-test}
+      - NODE_ENV=development
+    volumes:
+      # Mount source code for hot reload
+      - ./temporal-worker/src:/app/src
+      - ./temporal-worker/package.json:/app/package.json
+      - ./temporal-worker/package-lock.json:/app/package-lock.json
+      - ./temporal-worker/tsconfig.json:/app/tsconfig.json
+      # Exclude node_modules from volume mount (use container's node_modules)
+      - /app/node_modules
+    depends_on:
+      - temporal
+    restart: unless-stopped
+    networks:
+      - resume-publisher-dev

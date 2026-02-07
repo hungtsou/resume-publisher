@@ -7,15 +7,15 @@ async function run() {
   // Worker code uses `@temporalio/worker.NativeConnection`.
   // (But in your application code it's `@temporalio/client.Connection`.)
   const connection = await NativeConnection.connect({
-    address: 'localhost:7233',
+    address: process.env.TEMPORAL_ADDRESS || 'localhost:7233',
     // TLS and gRPC metadata configuration goes here.
   });
   try {
     // Step 2: Register Workflows and Activities with the Worker.
     const worker = await Worker.create({
       connection,
-      namespace: 'default',
-      taskQueue: 'hello-world-test',
+      namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+      taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test',
       // Workflows are registered using a path as they run in a separate JS context.
       workflowsPath: require.resolve('./workflows'),
       activities,
