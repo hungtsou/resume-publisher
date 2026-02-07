@@ -37,6 +37,7 @@ services:
       - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
       - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-hello-world-test}
       - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       # Mount source code for hot reload
       - ./api/src:/app/src

@@ -19,6 +19,9 @@ config({ path: envPath });
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
+// Store server instance for hot reload cleanup
+let server: ReturnType<typeof app.listen> | null = null;
+
 // Middleware setup in order: morgan → helmet → cors → json parser
 app.use(morgan('combined'));
 app.use(helmet());
@@ -55,26 +58,76 @@ async function startServer() {
     // Continue without Temporal - API can still run but workflows won't work
   }
 
-  // Start server
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-  });
+  // Start server with retry logic only in development (for Docker hot reload)
+  // In production, fail fast on port conflicts
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  const startListening = (retryCount = 0): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const newServer = app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+        server = newServer;
+        resolve();
+      });
+      
+      newServer.on('error', async (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          // Only retry in development (for Docker hot reload port conflicts)
+          // In production, fail fast - port conflicts indicate a real problem
+          if (isDevelopment && retryCount < 5) {
+            const delay = Math.min(1000 * (retryCount + 1), 5000); // Exponential backoff, max 5s
+            console.log(`Port ${PORT} is in use (attempt ${retryCount + 1}/5), waiting ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            try {
+              await startListening(retryCount + 1);
+              resolve();
+            } catch (retryErr) {
+              reject(retryErr);
+            }
+          } else {
+            reject(new Error(`Failed to start server: port ${PORT} is already in use`));
+          }
+        } else {
+          reject(err);
+        }
+      });
+    });
+  };
+  
+  await startListening();
 }
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing connections...');
+async function shutdown() {
+  console.log('Shutting down server...');
+  
+  // Close server if it exists
+  if (server) {
+    await new Promise<void>((resolve) => {
+      server!.close(() => {
+        console.log('Server closed');
+        resolve();
+      });
+    });
+  }
+  
+  // Close connections
   await closeDbPool();
   await closeTemporalClient();
+}
+
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing connections...');
+  await shutdown();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, closing connections...');
-  await closeDbPool();
-  await closeTemporalClient();
+  await shutdown();
   process.exit(0);
 });
+
 
 startServer().catch((err) => {
   console.error('Failed to start server:', err);
