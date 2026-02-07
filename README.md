@@ -238,6 +238,157 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 - **Database**: PostgreSQL (Supabase)
 - **Styling**: Tailwind CSS
 
+### Architecture Diagram
+
+> **Note**: The Mermaid diagram below renders best on GitHub. For a text-based view, see the ASCII diagram below.
+
+#### Text-Based Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND LAYER                            │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
+│  │  React UI    │───▶│ ResumeForm   │───▶│ Resume       │      │
+│  │  Port: 3001  │    │  Component   │    │ Publisher    │      │
+│  └──────────────┘    └──────────────┘    │ Service      │      │
+│                                           └──────┬───────┘      │
+└───────────────────────────────────────────────────┼──────────────┘
+                                                    │ HTTP POST
+                                                    │ /api/resume
+┌───────────────────────────────────────────────────▼──────────────┐
+│                         API LAYER                                │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │         Express API Server (Port: 3000)                 │   │
+│  │  ┌──────────────┐              ┌──────────────┐        │   │
+│  │  │ /api/resume  │──────────────▶│ Resume       │        │   │
+│  │  │   Route      │              │ Controller    │        │   │
+│  │  └──────────────┘              └──────┬───────┘        │   │
+│  │  ┌──────────────┐                    │                 │   │
+│  │  │ /api/check   │──────────────┐     │                 │   │
+│  │  │   Route      │              │     │                 │   │
+│  │  └──────────────┘              ▼     ▼                 │   │
+│  │                          ┌──────────────┐              │   │
+│  │                          │ Check        │              │   │
+│  │                          │ Controller   │              │   │
+│  │                          └──────────────┘              │   │
+│  │                                                         │   │
+│  │  ┌──────────────┐              ┌──────────────┐        │   │
+│  │  │ Temporal     │              │ Database     │        │   │
+│  │  │ Client       │              │ Client       │        │   │
+│  │  └──────┬───────┘              └──────┬───────┘        │   │
+│  └─────────┼──────────────────────────────┼────────────────┘   │
+└────────────┼──────────────────────────────┼────────────────────┘
+             │ gRPC                         │ SQL Queries
+             │                              │
+┌────────────▼──────────────────────────────▼────────────────────┐
+│                    WORKFLOW LAYER                              │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │         Temporal Server                                  │  │
+│  │         Port: 7233 (gRPC) / 8233 (Web UI)                │  │
+│  └────────────┬───────────────────────────────┬────────────┘  │
+│               │ Task Queue                     │               │
+│               │                                │               │
+│  ┌────────────▼───────────────────────────────▼────────────┐  │
+│  │         Temporal Worker                                 │  │
+│  │  ┌──────────────────┐      ┌──────────────────────────┐ │  │
+│  │  │ Workflows       │      │ Activities               │ │  │
+│  │  │ - resumePublisher│      │ - create user            │ │  │
+│  │  │                 │      │ - create resume          │ │  │
+│  │  │                 │      │ - publish resume         │ │  │
+│  │  └──────────────────┘      └──────────────────────────┘ │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        DATA LAYER                                │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              PostgreSQL Database                         │   │
+│  │  ┌──────────────┐              ┌──────────────┐        │   │
+│  │  │ User Schema  │              │ Resume       │        │   │
+│  │  │              │              │ Schema       │        │   │
+│  │  └──────────────┘              └──────────────┘        │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Interactive Mermaid Diagram
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        UI[React UI<br/>Port: 3001]
+        ResumeForm[ResumeForm Component]
+        ResumeService[Resume Publisher Service]
+        UI --> ResumeForm
+        ResumeForm --> ResumeService
+    end
+
+    subgraph "API Layer"
+        API[Express API Server<br/>Port: 3000]
+        ResumeController[Resume Controller]
+        CheckController[Check Controller]
+        ResumeRoute[/api/resume Route]
+        CheckRoute[/api/check Route]
+        TemporalClient[Temporal Client]
+        DBClient[Database Client]
+        
+        API --> ResumeRoute
+        API --> CheckRoute
+        ResumeRoute --> ResumeController
+        CheckRoute --> CheckController
+        ResumeController --> TemporalClient
+        ResumeController --> DBClient
+    end
+
+    subgraph "Workflow Layer"
+        TemporalServer[Temporal Server<br/>Port: 7233 gRPC<br/>Port: 8233 Web UI]
+        TemporalWorker[Temporal Worker]
+        Workflows[Workflows<br/>resumePublisher workflow]
+        Activities[Activities<br/>create user<br/>create resume<br/>publish resume]
+        
+        TemporalWorker --> Workflows
+        TemporalWorker --> Activities
+    end
+
+    subgraph "Data Layer"
+        PostgreSQL[(PostgreSQL Database)]
+        UserSchema[User Schema]
+        ResumeSchema[Resume Schema]
+        
+        PostgreSQL --> UserSchema
+        PostgreSQL --> ResumeSchema
+    end
+
+    %% Connections
+    ResumeService -->|HTTP POST /api/resume| API
+    TemporalClient -->|gRPC| TemporalServer
+    TemporalWorker -->|gRPC| TemporalServer
+    TemporalServer -->|Task Queue| TemporalWorker
+    DBClient -->|SQL Queries| PostgreSQL
+
+    %% Styling
+    classDef frontend fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef api fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef workflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef data fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+
+    class UI,ResumeForm,ResumeService frontend
+    class API,ResumeController,CheckController,ResumeRoute,CheckRoute,TemporalClient,DBClient api
+    class TemporalServer,TemporalWorker,Workflows,Activities workflow
+    class PostgreSQL,UserSchema,ResumeSchema data
+```
+
+### Component Interactions
+
+1. **User submits resume form** → `ResumeForm` component collects data
+2. **Frontend service** → `ResumePublisher` service sends POST request to `/api/resume`
+3. **API Controller** → `ResumeController` receives request and:
+   - Starts a Temporal workflow via `TemporalClient`
+   - (Optionally) Creates user and resume records in PostgreSQL via `DBClient`
+4. **Temporal Server** → Orchestrates workflow execution and dispatches tasks
+5. **Temporal Worker** → Picks up tasks from the queue, executes workflows and activities
+6. **Database** → Stores user and resume data (when implemented)
+
 ## License
 
 Private project
