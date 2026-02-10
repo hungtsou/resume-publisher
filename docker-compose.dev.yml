@@ -94,6 +94,7 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
       - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-hello-world-test}
+      - API_URL=http://api:3000
       - NODE_ENV=development
     volumes:
       # Mount source code for hot reload
@@ -105,6 +106,7 @@ services:
       - /app/node_modules
     depends_on:
       - temporal
+      - api
     restart: unless-stopped
     networks:
       - resume-publisher-dev

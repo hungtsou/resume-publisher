@@ -7,7 +7,7 @@ export const createResumeController = async (req: Request, res: Response) => {
 
     // Create resume with user ID and resume data
     const resume = await createResume({
-      userId: resumeData.userid,
+      userId: resumeData.userId,
       fullName: resumeData.fullName,
       occupation: resumeData.occupation,
       description: resumeData.description,

@@ -5,7 +5,7 @@ import { OccupationField } from './fields/OccupationField';
 import { DescriptionField } from './fields/DescriptionField';
 import { EducationField } from './fields/EducationField';
 import { ExperienceField } from './fields/ExperienceField';
-import { sendResume, check } from '../../services/resume-publisher';
+import { publishResume, check } from '../../services/resume-publisher';
 
 export function ResumeForm() {
   const {
@@ -39,7 +39,7 @@ export function ResumeForm() {
 
   const onSubmit = async (data: ResumeFormData) => {
     console.log('Form submitted:', data);
-    const response = await sendResume(data);
+    const response = await publishResume(data);
     console.log('Response:', response);
     // const response = await check()
     // console.log('Response check:', response);

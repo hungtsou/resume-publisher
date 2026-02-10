@@ -1,14 +1,13 @@
 import { type Request, type Response } from 'express';
-import { startExampleWorkflow } from '../temporal/client.ts';
+import { startPublishResumeWorkflow } from '../temporal/client.ts';
+import type { CreateResumeInput } from '../db/schemas/resume.ts';
 
 export const publishResume = async (req: Request, res: Response) => {
   try {
-    const resumeData = req.body;
+    const resumeData = req.body as CreateResumeInput;
 
     // Start the Temporal workflow
-    // For the 'example' workflow, we'll use the fullName from resume data or a default
-    const name = resumeData.fullName || 'Resume Publisher';
-    const { workflowId, runId } = await startExampleWorkflow(name);
+    const { workflowId, runId } = await startPublishResumeWorkflow(resumeData);
 
     // Return 202 Accepted for async processing
     res.status(202).json({

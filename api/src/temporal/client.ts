@@ -1,5 +1,6 @@
 import { Connection, Client } from '@temporalio/client';
 import { nanoid } from 'nanoid';
+import type { CreateResumeInput } from '../db/schemas/resume.ts';
 
 // Singleton pattern for Temporal client
 let temporalClient: Client | null = null;
@@ -90,4 +91,11 @@ export async function closeTemporalClient(): Promise<void> {
     await temporalClient.connection.close();
     temporalClient = null;
   }
+}
+
+
+export async function startPublishResumeWorkflow(resumeData: CreateResumeInput): Promise<{ workflowId: string; runId: string }> {
+  return startWorkflow('publishResume', [resumeData], {
+    taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test',
+  });
 }

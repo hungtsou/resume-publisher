@@ -10,6 +10,7 @@ import { resumeRoute } from './routes/resume-route.ts';
 import { getTemporalClient, closeTemporalClient } from './temporal/client.ts';
 import { getDbPool, closeDbPool } from './db/client.ts';
 import { userRoute } from './routes/user-route.ts';
+import { publishResumeRoute } from './routes/publish-resume-route.ts';
 
 // Load environment variables from .env file
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use('/api/check', checkRoute);
 app.use('/api/resume', resumeRoute);
 app.use('/api/user', userRoute);
+app.use('/api/publish-resume', publishResumeRoute);
 
 
 // Health check root endpoint
