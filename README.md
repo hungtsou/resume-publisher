@@ -245,82 +245,85 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 #### Text-Based Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        FRONTEND LAYER                            │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │  React UI    │───▶│ ResumeForm   │───▶│ Resume       │      │
-│  │  Port: 3001  │    │  Component   │    │ Publisher    │      │
-│  └──────────────┘    └──────────────┘    │ Service      │      │
-│                                           └──────┬───────┘      │
-└───────────────────────────────────────────────────┼──────────────┘
-                                                    │ HTTP POST
-                                                    │ /api/resume
-┌───────────────────────────────────────────────────▼──────────────┐
-│                         API LAYER                                │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │         Express API Server (Port: 3000)                 │   │
-│  │  ┌──────────────┐              ┌──────────────┐        │   │
-│  │  │ /api/resume  │──────────────▶│ Resume       │        │   │
-│  │  │   Route      │              │ Controller    │        │   │
-│  │  └──────────────┘              └──────┬───────┘        │   │
-│  │  ┌──────────────┐                    │                 │   │
-│  │  │ /api/check   │──────────────┐     │                 │   │
-│  │  │   Route      │              │     │                 │   │
-│  │  └──────────────┘              ▼     ▼                 │   │
-│  │                          ┌──────────────┐              │   │
-│  │                          │ Check        │              │   │
-│  │                          │ Controller   │              │   │
-│  │                          └──────────────┘              │   │
-│  │                                                         │   │
-│  │  ┌──────────────┐              ┌──────────────┐        │   │
-│  │  │ Temporal     │              │ Database     │        │   │
-│  │  │ Client       │              │ Client       │        │   │
-│  │  └──────┬───────┘              └──────┬───────┘        │   │
-│  └─────────┼──────────────────────────────┼────────────────┘   │
-└────────────┼──────────────────────────────┼────────────────────┘
-             │ gRPC                         │ SQL Queries
-             │                              │
-┌────────────▼──────────────────────────────▼────────────────────┐
-│                    WORKFLOW LAYER                              │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │         Temporal Server                                  │  │
-│  │         Port: 7233 (gRPC) / 8233 (Web UI)                │  │
-│  └────────────┬───────────────────────────────┬────────────┘  │
-│               │ Task Queue                     │               │
-│               │                                │               │
-│  ┌────────────▼───────────────────────────────▼────────────┐  │
-│  │         Temporal Worker                                 │  │
-│  │  ┌──────────────────┐      ┌──────────────────────────┐ │  │
-│  │  │ Workflows       │      │ Activities               │ │  │
-│  │  │ - resumePublisher│      │ - create user            │ │  │
-│  │  │                 │      │ - create resume          │ │  │
-│  │  │                 │      │ - publish resume         │ │  │
-│  │  └──────────────────┘      └──────────────────────────┘ │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                        DATA LAYER                                │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              PostgreSQL Database                         │   │
-│  │  ┌──────────────┐              ┌──────────────┐        │   │
-│  │  │ User Schema  │              │ Resume       │        │   │
-│  │  │              │              │ Schema       │        │   │
-│  │  └──────────────┘              └──────────────┘        │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          FRONTEND LAYER                                  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐     │
+│  │  React UI    │───▶│ ResumeForm   │───▶│ Resume Publisher     │     │
+│  │  Port: 3001  │    │  Component   │    │ Service              │     │
+│  └──────────────┘    └──────────────┘    └──────────┬───────────┘     │
+│                                                       │ POST /api/publish-resume
+└───────────────────────────────────────────────────────┼─────────────────┘
+                                                        │
+┌───────────────────────────────────────────────────────▼─────────────────┐
+│                            API LAYER                                     │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │            Express API Server (Port: 3000)                         │  │
+│  │                                                                    │  │
+│  │  Routes & Controllers:                                              │  │
+│  │  ┌─────────────────────┐    ┌─────────────────────────────┐       │  │
+│  │  │ POST /api/publish-  │───▶│ Publish Resume Controller   │       │  │
+│  │  │      resume         │    │ (starts publishResume       │       │  │
+│  │  └─────────────────────┘    │  workflow via Temporal)     │       │  │
+│  │                              └──────────────┬──────────────┘       │  │
+│  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
+│  │  │ POST/GET /api/resume│───▶│ Resume Controller           │       │  │
+│  │  └─────────────────────┘    │ (create, getById, getAll)    │       │  │
+│  │                              └──────────────┬──────────────┘       │  │
+│  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
+│  │  │ POST/GET /api/user  │───▶│ User Controller              │       │  │
+│  │  └─────────────────────┘    │ (create, getById, getAll)   │       │  │
+│  │                              └──────────────┬──────────────┘       │  │
+│  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
+│  │  │ GET /api/check       │───▶│ Check Controller            │       │  │
+│  │  └─────────────────────┘    └─────────────────────────────┘       │  │
+│  │                                                                    │  │
+│  │  ┌─────────────────────┐         ┌─────────────────────┐          │  │
+│  │  │ Temporal Client     │         │ Database Client     │          │  │
+│  │  └──────────┬──────────┘         └──────────┬──────────┘          │  │
+│  └─────────────┼────────────────────────────────┼─────────────────────┘  │
+└────────────────┼────────────────────────────────┼───────────────────────┘
+                 │ gRPC                            │ SQL
+                 │                                 │
+┌────────────────▼────────────────────────────────▼───────────────────────┐
+│                         WORKFLOW LAYER                                    │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │  Temporal Server  (Port: 7233 gRPC / 8233 Web UI)                  │  │
+│  └────────────────────────────┬───────────────────────────────────────┘  │
+│                               │ Task Queue                                │
+│  ┌────────────────────────────▼───────────────────────────────────────┐  │
+│  │  Temporal Worker                                                     │  │
+│  │  ┌─────────────────────────┐   ┌─────────────────────────────────┐  │  │
+│  │  │ Workflows               │   │ Activities                      │  │  │
+│  │  │ - example               │   │ - greet                         │  │  │
+│  │  │   (greet)               │   │ - createUser → POST /api/user   │  │  │
+│  │  │ - publishResume         │   │ - createResume → POST /api/      │  │  │
+│  │  │   (createUser →         │   │   resume                        │  │  │
+│  │  │    createResume)        │   │                                 │  │  │
+│  │  └─────────────────────────┘   └─────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────┘
+         │ Activities call back to API (User + Resume controllers)
+         ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            DATA LAYER                                    │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  PostgreSQL Database                                               │  │
+│  │  ┌──────────────────┐              ┌──────────────────┐           │  │
+│  │  │ User Schema      │              │ Resume Schema    │           │  │
+│  │  └──────────────────┘              └──────────────────┘           │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Interactions
 
-1. **User submits resume form** → `ResumeForm` component collects data
-2. **Frontend service** → `ResumePublisher` service sends POST request to `/api/resume`
-3. **API Controller** → `ResumeController` receives request and:
-   - Starts a Temporal workflow via `TemporalClient`
-   - (Optionally) Creates user and resume records in PostgreSQL via `DBClient`
-4. **Temporal Server** → Orchestrates workflow execution and dispatches tasks
-5. **Temporal Worker** → Picks up tasks from the queue, executes workflows and activities
-6. **Database** → Stores user and resume data (when implemented)
+1. **User submits resume form** → `ResumeForm` component collects data; frontend sends POST to `/api/publish-resume`.
+2. **Publish Resume Controller** → Receives request, starts the `publishResume` Temporal workflow via Temporal Client, returns 202 Accepted with `workflowId` and `runId`.
+3. **Temporal Server** → Schedules the workflow; worker picks up the task.
+4. **Temporal Worker** → Runs `publishResume` workflow, which executes activities in order: `createUser` (POST to `/api/user`), then `createResume` (POST to `/api/resume`).
+5. **User Controller** → Handles POST `/api/user` from the worker’s `createUser` activity; creates user in PostgreSQL.
+6. **Resume Controller** → Handles POST `/api/resume` from the worker’s `createResume` activity; creates resume in PostgreSQL.
+7. **Database** → Stores users and resumes via the API’s User and Resume controllers.
 
 ## License
 
