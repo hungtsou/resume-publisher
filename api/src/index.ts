@@ -9,6 +9,7 @@ import { checkRoute } from './routes/check-route.ts';
 import { resumeRoute } from './routes/resume-route.ts';
 import { getTemporalClient, closeTemporalClient } from './temporal/client.ts';
 import { getDbPool, closeDbPool } from './db/client.ts';
+import { userRoute } from './routes/user-route.ts';
 
 // Load environment variables from .env file
 const __filename = fileURLToPath(import.meta.url);
@@ -30,8 +31,9 @@ app.use(express.json());
 
 // Routes
 app.use('/api/check', checkRoute);
-
 app.use('/api/resume', resumeRoute);
+app.use('/api/user', userRoute);
+
 
 // Health check root endpoint
 app.get('/', (_req, res) => {

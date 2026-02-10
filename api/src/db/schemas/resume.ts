@@ -127,3 +127,18 @@ export async function createResume(input: CreateResumeInput): Promise<Resume> {
     throw error;
   }
 }
+
+export async function getResumeById(id: string): Promise<Resume> {
+  const pool = getDbPool();
+
+  const query = `SELECT id, user_id, full_name, occupation, description, education, experience, created_at, updated_at FROM resumes WHERE id = $1`;
+  const result = await pool.query<ResumeRow>(query, [id]);
+  return mapResumeRowToResume(result.rows[0]);
+}
+
+export async function getAllResumes(): Promise<Resume[]> {
+  const pool = getDbPool();
+  const query = `SELECT id, user_id, full_name, occupation, description, education, experience, created_at, updated_at FROM resumes`;
+  const result = await pool.query<ResumeRow>(query);
+  return result.rows.map(mapResumeRowToResume);
+}

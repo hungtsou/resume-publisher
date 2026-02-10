@@ -78,3 +78,28 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     throw error;
   }
 }
+
+export async function getAllUsers(): Promise<User[]> {
+  const pool = getDbPool();
+
+  const query = `
+    SELECT id, user_name, created_at, updated_at
+    FROM users
+  `;
+
+  const result = await pool.query<UserRow>(query);
+  return result.rows.map(mapUserRowToUser);
+}
+
+export async function getUser(id: string): Promise<User> {
+  const pool = getDbPool();
+
+  const query = `
+    SELECT id, user_name, created_at, updated_at
+    FROM users
+    WHERE id = $1
+  `;
+
+  const result = await pool.query<UserRow>(query, [id]);
+  return mapUserRowToUser(result.rows[0]);
+}
