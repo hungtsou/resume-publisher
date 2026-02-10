@@ -7,9 +7,12 @@ CREATE TABLE IF NOT EXISTS resumes (
   description TEXT,
   education JSONB DEFAULT '[]'::jsonb,
   experience JSONB DEFAULT '[]'::jsonb,
+  published BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create index on user_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
+
+ALTER TABLE resumes ADD COLUMN IF NOT EXISTS published BOOLEAN DEFAULT FALSE;
