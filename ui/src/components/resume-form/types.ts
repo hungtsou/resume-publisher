@@ -21,3 +21,16 @@ export interface ResumeFormData {
   education: EducationEntry[];
   experience: ExperienceEntry[];
 }
+
+export interface Resume {
+  id: string;
+  userId: string;
+  fullName: string;
+  occupation: string;
+  description: string;
+  education: EducationEntry[];
+  experience: ExperienceEntry[];
+  published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

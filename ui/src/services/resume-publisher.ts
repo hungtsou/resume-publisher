@@ -36,3 +36,10 @@ export const publishResume = async (resume: ResumeFormData) => {
   }
   return response.json();
 };
+
+export const getResumes = async () => {
+  const response = await fetch('/api/resume', {
+    method: 'GET',
+  });
+  return response.json();
+};
