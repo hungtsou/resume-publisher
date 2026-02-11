@@ -39,13 +39,13 @@ async function run() {
     const worker = await Worker.create({
       connection,
       namespace: process.env.TEMPORAL_NAMESPACE || 'default',
-      taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test',
+      taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'publish-resume-task',
       // Workflows are registered using a path as they run in a separate JS context.
       workflowsPath: require.resolve('./workflows'),
       activities,
     });
 
-    // Step 3: Start accepting tasks on the `hello-world` queue
+    // Step 3: Start accepting tasks on the `publish-resume-task` queue
     //
     // The worker runs until it encounters an unexpected error or the process receives a shutdown signal registered on
     // the SDK Runtime object.

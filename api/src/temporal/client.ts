@@ -42,7 +42,7 @@ export async function startWorkflow(
   const client = await getTemporalClient();
 
   const workflowId = options?.workflowId || `${workflowName}-${nanoid()}`;
-  const taskQueue = options?.taskQueue || process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test';
+  const taskQueue = options?.taskQueue || process.env.TEMPORAL_TASK_QUEUE || 'publish-resume-task';
 
   const handle = await client.workflow.start(workflowName, {
     taskQueue,
@@ -68,7 +68,7 @@ export async function startExampleWorkflow(
   name: string
 ): Promise<{ workflowId: string; runId: string }> {
   return startWorkflow('example', [name], {
-    taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test',
+    taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'publish-resume-task',
   });
 }
 
@@ -96,6 +96,6 @@ export async function closeTemporalClient(): Promise<void> {
 
 export async function startPublishResumeWorkflow(resumeData: CreateResumeInput): Promise<{ workflowId: string; runId: string }> {
   return startWorkflow('publishResumeWorkflow', [resumeData], {
-    taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test',
+    taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'publish-resume-task',
   });
 }

@@ -42,7 +42,7 @@ Create `api/.env` file with the following variables:
 DATABASE_URL=postgresql://user:password@host:port/database
 TEMPORAL_ADDRESS=localhost:7233
 TEMPORAL_NAMESPACE=default
-TEMPORAL_TASK_QUEUE=hello-world-test
+TEMPORAL_TASK_QUEUE=publish-resume-task
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 PORT=3000
 ```
@@ -62,7 +62,7 @@ The temporal-worker uses environment variables for Temporal connection configura
 ```env
 TEMPORAL_ADDRESS=localhost:7233
 TEMPORAL_NAMESPACE=default
-TEMPORAL_TASK_QUEUE=hello-world-test
+TEMPORAL_TASK_QUEUE=publish-resume-task
 ```
 
 When running in Docker, these are automatically configured to connect to the `temporal` service.

@@ -141,6 +141,7 @@ export async function updateResume(id: string, resumeData: CreateResumeInput): P
     throw new Error(`updateResume failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
   }
   const { resume } = (await response.json()) as { resume: ResumeData };
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   await emit('activity_completed', 'resumePublished', `Resume updated: ${resume.id}`);
   return resume;
 }
