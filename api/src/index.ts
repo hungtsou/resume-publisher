@@ -11,6 +11,8 @@ import { getTemporalClient, closeTemporalClient } from './temporal/client.ts';
 import { getDbPool, closeDbPool } from './db/client.ts';
 import { userRoute } from './routes/user-route.ts';
 import { publishResumeRoute } from './routes/publish-resume-route.ts';
+import { workerEventsRoute } from './routes/worker-events-route.ts';
+import * as workerEvents from './worker-events/index.ts';
 
 // Load environment variables from .env file
 const __filename = fileURLToPath(import.meta.url);
@@ -35,7 +37,7 @@ app.use('/api/check', checkRoute);
 app.use('/api/resume', resumeRoute);
 app.use('/api/user', userRoute);
 app.use('/api/publish-resume', publishResumeRoute);
-
+app.use('/api/worker-events', workerEventsRoute);
 
 // Health check root endpoint
 app.get('/', (_req, res) => {
@@ -60,6 +62,15 @@ async function startServer() {
   } catch (error) {
     console.error('Failed to connect to Temporal:', error);
     // Continue without Temporal - API can still run but workflows won't work
+  }
+
+  // Start worker-events Kafka consumer
+  try {
+    await workerEvents.startConsumer();
+    console.log('Worker events consumer started');
+  } catch (error) {
+    console.error('Failed to start worker events consumer:', error);
+    // Continue without Kafka - API can still run but worker events won't be received
   }
 
   // Start server with retry logic only in development (for Docker hot reload)
@@ -116,6 +127,7 @@ async function shutdown() {
   }
   
   // Close connections
+  await workerEvents.stopConsumer();
   await closeDbPool();
   await closeTemporalClient();
 }

@@ -43,6 +43,7 @@ DATABASE_URL=postgresql://user:password@host:port/database
 TEMPORAL_ADDRESS=localhost:7233
 TEMPORAL_NAMESPACE=default
 TEMPORAL_TASK_QUEUE=hello-world-test
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 PORT=3000
 ```
 
@@ -100,10 +101,31 @@ npm run docker:up:dev
 ```
 
 This will start:
+- Kafka on port 9092 (topic `resume_publisher` created by kafka-init)
 - Temporal server on ports 7233 (gRPC) and 8233 (Web UI)
 - API on port 3000 with hot reload
 - UI on port 3001 with hot reload
-- Temporal worker with hot reload (connects to Temporal server)
+- Temporal worker with hot reload (connects to Temporal server and Kafka)
+
+**Viewing worker events in Kafka (real time):** In a **second terminal**, run (use partition 0 and offset 0 so you always see all messages):
+
+```bash
+docker exec -it resume-publisher-kafka /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic resume_publisher \
+  --partition 0 \
+  --offset 0
+```
+
+Trigger a resume publish from the UI; you should see JSON event messages in that terminal. In the main docker compose terminal, look for `Event publisher (Kafka) connected` and `Event published to Kafka: ...` in the temporal-worker logs, and `Worker event received: ...` in the API logs.
+
+**If the consumer shows no output:** First confirm the consumer and topic work. With the consumer running in terminal 2, in a **third terminal** produce a test message:
+
+```bash
+echo '{"event":"test","step":"manual","message":"hello"}' | docker exec -i resume-publisher-kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic resume_publisher
+```
+
+You should see that line appear in the consumer terminal. If it does, Kafka and the consumer are fine—check temporal-worker logs for `Event publisher Kafka bootstrap servers:` (should be `kafka:9092`), `Event publisher (Kafka) connected`, and either `Event published to Kafka:` or `Event publisher send failed:` when you submit a resume.
 
 ### Production Build
 
@@ -222,19 +244,21 @@ The project includes two Docker Compose configurations:
 - `docker-compose.dev.yml` - Development configuration with hot reload
 
 Both configurations include:
+- **Kafka** (Apache Kafka 4.1.1, KRaft mode, port 9092) and **kafka-init** (creates topic `resume_publisher` on startup)
 - Temporal server
 - API service
 - UI service
-- Temporal worker service
+- Temporal worker service (dev compose only)
 
-Environment variables are automatically loaded from `api/.env` when using Docker Compose. The Temporal worker is configured to connect to the Temporal server using the service name `temporal:7233`.
+Environment variables are automatically loaded from `api/.env` when using Docker Compose. The Temporal worker connects to the Temporal server at `temporal:7233` and to Kafka at `kafka:9092`. The API consumes worker events from Kafka (`KAFKA_BOOTSTRAP_SERVERS=kafka:9092`).
 
 ## Project Architecture
 
 - **Frontend (UI)**: React application built with Vite, using React Router and React Hook Form
-- **Backend (API)**: Express.js API server with TypeScript
+- **Backend (API)**: Express.js API server with TypeScript; consumes worker events from Kafka
 - **Workflow Engine**: Temporal for workflow orchestration
-- **Temporal Worker**: Processes workflow tasks and executes activities
+- **Temporal Worker**: Processes workflow tasks, runs activities, publishes progress events to Kafka
+- **Kafka**: Apache Kafka (topic `resume_publisher`) for worker event stream; API exposes **GET /api/worker-events**
 - **Database**: PostgreSQL (Supabase)
 - **Styling**: Tailwind CSS
 
@@ -266,6 +290,10 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 │  │  └─────────────────────┘    │  workflow via Temporal)     │       │  │
 │  │                              └──────────────┬──────────────┘       │  │
 │  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
+│  │  │ GET /api/worker-     │───▶│ Worker Events Controller    │       │  │
+│  │  │     events          │    │ (events from Kafka consumer) │       │  │
+│  │  └─────────────────────┘    └─────────────────────────────┘       │  │
+│  │  ┌─────────────────────┐    ┌──────────────────────────────┐      │  │
 │  │  │ POST/GET /api/resume│───▶│ Resume Controller           │       │  │
 │  │  └─────────────────────┘    │ (create, getById, getAll)    │       │  │
 │  │                              └──────────────┬──────────────┘       │  │
@@ -315,15 +343,28 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Workflow Summary
+
+End-to-end flow for publishing a resume:
+
+1. **UI** → User submits the resume form; frontend sends **POST /api/publish-resume** with resume data.
+2. **API** → Publish Resume Controller starts the `publishResume` Temporal workflow and returns **202 Accepted** with `workflowId` and `runId`.
+3. **Temporal** → Server schedules the workflow; the worker dequeues the task.
+4. **Temporal Worker** → Runs the `publishResume` workflow: calls **createUser** (POST /api/user), then **createResume** (POST /api/resume). For each activity it emits events (e.g. started, completed, failed) to **Kafka** topic `resume_publisher`.
+5. **Kafka** → Receives worker events; the **API** consumes them via the worker-events module and stores them in an in-memory, bounded store.
+6. **API** → User and Resume controllers handle the worker’s HTTP calls and persist to **PostgreSQL**.
+7. **API** → Clients can read worker progress via **GET /api/worker-events** (optional `?workflowId=` to filter by workflow).
+
 ### Component Interactions
 
 1. **User submits resume form** → `ResumeForm` component collects data; frontend sends POST to `/api/publish-resume`.
 2. **Publish Resume Controller** → Receives request, starts the `publishResume` Temporal workflow via Temporal Client, returns 202 Accepted with `workflowId` and `runId`.
 3. **Temporal Server** → Schedules the workflow; worker picks up the task.
-4. **Temporal Worker** → Runs `publishResume` workflow, which executes activities in order: `createUser` (POST to `/api/user`), then `createResume` (POST to `/api/resume`).
-5. **User Controller** → Handles POST `/api/user` from the worker’s `createUser` activity; creates user in PostgreSQL.
-6. **Resume Controller** → Handles POST `/api/resume` from the worker’s `createResume` activity; creates resume in PostgreSQL.
-7. **Database** → Stores users and resumes via the API’s User and Resume controllers.
+4. **Temporal Worker** → Runs `publishResume` workflow, which executes activities in order: `createUser` (POST to `/api/user`), then `createResume` (POST to `/api/resume`). The worker publishes progress events to Kafka topic `resume_publisher`.
+5. **Kafka** → Holds worker events; the API’s worker-events consumer reads from `resume_publisher` and stores events for **GET /api/worker-events**.
+6. **User Controller** → Handles POST `/api/user` from the worker’s `createUser` activity; creates user in PostgreSQL.
+7. **Resume Controller** → Handles POST `/api/resume` from the worker’s `createResume` activity; creates resume in PostgreSQL.
+8. **Database** → Stores users and resumes via the API’s User and Resume controllers.
 
 ## License
 

@@ -1,6 +1,44 @@
 version: '3.8'
 
+networks:
+  resume-publisher:
+    driver: bridge
+
 services:
+  kafka:
+    image: apache/kafka:4.1.1
+    container_name: resume-publisher-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft mode (single node): required so broker starts when overriding listener config
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Listeners: client port 9092, controller port 29093 (internal only)
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      start_period: 20s
+      retries: 5
+    networks:
+      - resume-publisher
+
+  kafka-init:
+    image: apache/kafka:4.1.1
+    container_name: resume-publisher-kafka-init
+    command: ["/opt/kafka/bin/kafka-topics.sh", "--create", "--topic", "resume_publisher", "--bootstrap-server", "kafka:9092", "--if-not-exists"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - resume-publisher
+
   temporal:
     image: temporalio/temporal:latest
     container_name: temporal-server
@@ -14,6 +52,8 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 10
+    networks:
+      - resume-publisher
 
   api:
     build:
@@ -30,9 +70,15 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
       - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-hello-world-test}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
-      - temporal
+      temporal:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - resume-publisher
 
   ui:
     build:
@@ -47,3 +93,5 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    networks:
+      - resume-publisher

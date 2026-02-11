@@ -1,3 +1,6 @@
+import { Context } from '@temporalio/activity';
+import { publishEvent } from './event-publisher/index';
+
 export interface CreateResumeInput {
   userId: string;
   fullName: string;
@@ -28,11 +31,38 @@ export interface UserData {
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
 
+function getWorkflowIds(): { workflowId: string; runId: string } {
+  const info = Context.current().info;
+  return {
+    workflowId: info.workflowExecution.workflowId,
+    runId: info.workflowExecution.runId,
+  };
+}
+
+async function emit(event: string, step: string, message: string): Promise<void> {
+  const { workflowId, runId } = getWorkflowIds();
+  try {
+    await publishEvent({
+      workflowId,
+      runId,
+      event,
+      step,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Non-fatal: do not fail the activity if Kafka is unavailable
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('Event publisher send failed:', msg, err);
+  }
+}
+
 export async function greet(name: string): Promise<string> {
   return `Hello, ${name}!`;
 }
 
 export async function createUser(userName: string): Promise<UserData> {
+  await emit('activity_started', 'createUser', `Creating user: ${userName}`);
   let response: Response;
   try {
     response = await fetch(`${API_URL}/api/user`, {
@@ -42,17 +72,21 @@ export async function createUser(userName: string): Promise<UserData> {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    await emit('activity_failed', 'createUser', `createUser fetch failed: ${message}`);
     throw new Error(`createUser fetch failed: ${message}`);
   }
   if (!response.ok) {
     const body = await response.text();
+    await emit('activity_failed', 'createUser', `createUser failed: ${response.status} ${response.statusText}`);
     throw new Error(`createUser failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
   }
   const responseData = (await response.json()) as { user: UserData };
+  await emit('activity_completed', 'createUser', `User created: ${responseData.user.id}`);
   return responseData.user;
 }
 
 export async function createResume(resumeData: CreateResumeInput): Promise<ResumeData> {
+  await emit('activity_started', 'createResume', 'Creating resume');
   let response: Response;
   try {
     response = await fetch(`${API_URL}/api/resume`, {
@@ -62,11 +96,15 @@ export async function createResume(resumeData: CreateResumeInput): Promise<Resum
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    await emit('activity_failed', 'createResume', `createResume fetch failed: ${message}`);
     throw new Error(`createResume fetch failed: ${message}`);
   }
   if (!response.ok) {
     const body = await response.text();
+    await emit('activity_failed', 'createResume', `createResume failed: ${response.status} ${response.statusText}`);
     throw new Error(`createResume failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
   }
-  return response.json() as Promise<ResumeData>;
+  const resume = (await response.json()) as ResumeData;
+  await emit('activity_completed', 'createResume', `Resume created: ${resume.id}`);
+  return resume;
 }
