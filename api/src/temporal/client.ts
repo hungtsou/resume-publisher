@@ -95,7 +95,7 @@ export async function closeTemporalClient(): Promise<void> {
 
 
 export async function startPublishResumeWorkflow(resumeData: CreateResumeInput): Promise<{ workflowId: string; runId: string }> {
-  return startWorkflow('publishResume', [resumeData], {
+  return startWorkflow('publishResumeWorkflow', [resumeData], {
     taskQueue: process.env.TEMPORAL_TASK_QUEUE || 'hello-world-test',
   });
 }

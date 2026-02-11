@@ -6,6 +6,7 @@ export interface CreateResumeInput {
   fullName: string;
   occupation?: string;
   description?: string;
+  published?: boolean;
   education?: any[];
   experience?: any[];
 }
@@ -104,7 +105,31 @@ export async function createResume(resumeData: CreateResumeInput): Promise<Resum
     await emit('activity_failed', 'createResume', `createResume failed: ${response.status} ${response.statusText}`);
     throw new Error(`createResume failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
   }
-  const resume = (await response.json()) as ResumeData;
+  const { resume } = (await response.json()) as { resume: ResumeData };
   await emit('activity_completed', 'createResume', `Resume created: ${resume.id}`);
+  return resume;
+}
+
+export async function updateResume(id: string, resumeData: CreateResumeInput): Promise<ResumeData> {
+  await emit('activity_started', 'updateResume', 'Updating resume');
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/resume/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(resumeData),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await emit('activity_failed', 'updateResume', `updateResume fetch failed: ${message}`);
+    throw new Error(`updateResume fetch failed: ${message}`);
+  }
+  if (!response.ok) {
+    const body = await response.text();
+    await emit('activity_failed', 'updateResume', `updateResume failed: ${response.status} ${response.statusText}`);
+    throw new Error(`updateResume failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
+  }
+  const { resume } = (await response.json()) as { resume: ResumeData };
+  await emit('activity_completed', 'updateResume', `Resume updated: ${resume.id}`);
   return resume;
 }

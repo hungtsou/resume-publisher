@@ -9,7 +9,8 @@ function Resumes() {
   useEffect(() => {
     const fetchResumes = async () => {
       const response = await getResumes();
-      setResumes(response.resumes as Resume[]);
+      const sortedResumes = response.resumes.reverse();
+      setResumes(sortedResumes as Resume[]);
     }
     fetchResumes();
   }, []);

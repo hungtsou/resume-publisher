@@ -147,3 +147,45 @@ export async function getAllResumes(): Promise<Resume[]> {
   const result = await pool.query<ResumeRow>(query);
   return result.rows.map(mapResumeRowToResume);
 }
+
+export async function updateResume(id: string, input: CreateResumeInput): Promise<Resume> {
+  if (!id || id === 'undefined') {
+    throw new Error(`Resume id is required (received: ${JSON.stringify(id)})`);
+  }
+  if (!input.userId || input.userId === 'undefined') {
+    throw new Error(`Resume userId is required for update (received: ${JSON.stringify(input.userId)})`);
+  }
+
+  const pool = getDbPool();
+
+  const query = `
+    UPDATE resumes SET
+      user_id = $1,
+      full_name = $2,
+      occupation = $3,
+      description = $4,
+      education = $5::jsonb,
+      experience = $6::jsonb,
+      published = $7,
+      updated_at = NOW()
+    WHERE id = $8
+    RETURNING id, user_id, full_name, occupation, description, education, experience, published, created_at, updated_at
+  `;
+
+  const result = await pool.query<ResumeRow>(query, [
+    input.userId,
+    input.fullName,
+    input.occupation ?? null,
+    input.description ?? null,
+    JSON.stringify(input.education ?? []),
+    JSON.stringify(input.experience ?? []),
+    input.published ?? false,
+    id,
+  ]);
+
+  if (result.rows.length === 0) {
+    throw new Error(`Resume with id "${id}" does not exist`);
+  }
+
+  return mapResumeRowToResume(result.rows[0]);
+}

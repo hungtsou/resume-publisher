@@ -2,7 +2,7 @@ import { proxyActivities } from '@temporalio/workflow';
 // Only import the activity types
 import * as activities from './activities';
 
-const { greet, createUser, createResume } = proxyActivities<typeof activities>({
+const { greet, createUser, createResume, updateResume } = proxyActivities<typeof activities>({
   startToCloseTimeout: '1 minute',
 });
 
@@ -11,8 +11,9 @@ export async function example(name: string, lastName: string): Promise<string> {
   return await greet(`${name} ${lastName}`);
 }
 
-export async function publishResume(resumeData: activities.CreateResumeInput) {
+export async function publishResumeWorkflow(resumeData: activities.CreateResumeInput) {
   const user = await createUser(resumeData.fullName);
+
   const resume = await createResume({
     userId: user.id,
     fullName: resumeData.fullName,
@@ -21,5 +22,16 @@ export async function publishResume(resumeData: activities.CreateResumeInput) {
     education: resumeData.education,
     experience: resumeData.experience,
   });
-  return resume;
+
+  const publishResume = await updateResume(resume.id, {
+    userId: user.id,
+    fullName: resumeData.fullName,
+    occupation: resumeData.occupation,
+    description: resumeData.description,
+    education: resumeData.education,
+    experience: resumeData.experience,
+    published: true,
+  });
+
+  return publishResume;
 }

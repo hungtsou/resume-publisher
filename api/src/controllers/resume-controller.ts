@@ -1,5 +1,5 @@
 import { type Request, type Response } from 'express';
-import { createResume, getResumeById, getAllResumes } from '../db/schemas/resume.ts';
+import { createResume, getResumeById, getAllResumes, updateResume } from '../db/schemas/resume.ts';
 
 export const createResumeController = async (req: Request, res: Response) => {
   try {
@@ -37,4 +37,11 @@ export const getResumeController = async (req: Request, res: Response) => {
 export const getResumesController = async (req: Request, res: Response) => {
   const resumes = await getAllResumes();
   res.status(200).json({ resumes });
+};
+
+export const updateResumeController = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const resumeData = req.body;
+  const resume = await updateResume(id, resumeData);
+  res.status(200).json({ resume });
 };
