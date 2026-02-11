@@ -347,6 +347,23 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 
 End-to-end flow for publishing a resume:
 
+```mermaid
+sequenceDiagram
+  participant UI
+  participant API
+  participant Temporal
+  participant Worker
+  participant Kafka
+
+  UI->>API: POST publish-resume
+  API->>Temporal: start workflow
+  API->>UI: 202 + workflowId
+  Temporal->>Worker: run workflow/activities
+  Worker->>Kafka: produce log events (resume_publisher)
+  Kafka->>API: consumer receives messages
+  API->>API: store/log and optionally expose GET /api/logs
+```
+
 1. **UI** → User submits the resume form; frontend sends **POST /api/publish-resume** with resume data.
 2. **API** → Publish Resume Controller starts the `publishResume` Temporal workflow and returns **202 Accepted** with `workflowId` and `runId`.
 3. **Temporal** → Server schedules the workflow; the worker dequeues the task.

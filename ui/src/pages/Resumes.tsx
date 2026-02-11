@@ -28,7 +28,7 @@ function Resumes() {
         
         <div className="space-y-4">
           {resumes.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No resumes yet</p>
+            <p className="text-gray-500 text-center py-8">Loading...</p>
           ) : (
             resumes.map((resume) => (
               <Card
