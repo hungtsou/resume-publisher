@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ResumeFormData } from './types';
 import { FullNameField } from './fields/FullNameField';
@@ -8,6 +9,7 @@ import { ExperienceField } from './fields/ExperienceField';
 import { publishResume } from '../../services/resume-publisher';
 
 export function ResumeForm() {
+  const navigate = useNavigate();
   const {
     register,
     control,
@@ -38,11 +40,8 @@ export function ResumeForm() {
   });
 
   const onSubmit = async (data: ResumeFormData) => {
-    console.log('Form submitted:', data);
-    const response = await publishResume(data);
-    console.log('Response:', response);
-    // const response = await check()
-    // console.log('Response check:', response);
+    await publishResume(data);
+    navigate('/resumes');
   };
 
   return (
