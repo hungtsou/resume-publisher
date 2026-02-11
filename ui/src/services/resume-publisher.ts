@@ -43,3 +43,13 @@ export const getResumes = async () => {
   });
   return response.json();
 };
+
+export const getResumeById = async (id: string) => {
+  const response = await fetch(`/api/resume/${id}`);
+  if (!response.ok) {
+    if (response.status === 404) throw new Error('Resume not found');
+    throw new Error(`Failed to fetch resume: ${response.statusText}`);
+  }
+  const { resume } = await response.json();
+  return resume;
+};

@@ -5,7 +5,7 @@ import { OccupationField } from './fields/OccupationField';
 import { DescriptionField } from './fields/DescriptionField';
 import { EducationField } from './fields/EducationField';
 import { ExperienceField } from './fields/ExperienceField';
-import { publishResume, check } from '../../services/resume-publisher';
+import { publishResume } from '../../services/resume-publisher';
 
 export function ResumeForm() {
   const {

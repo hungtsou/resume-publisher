@@ -28,6 +28,7 @@ export function ExperienceField({
   const addExperience = () => {
     append({
       company: '',
+      jobTitle: '',
       startDate: '',
       endDate: null,
       isPresent: false,

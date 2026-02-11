@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { getResumes } from '../services/resume-publisher';
 import { useState, useEffect } from 'react';
 import type { Resume } from '../components/resume-form/types';
@@ -25,18 +26,23 @@ function Resumes() {
             View published resumes here
           </p>
         </div>
-        
+
         <div className="space-y-4">
           {resumes.length === 0 ? (
             <p className="text-gray-500 text-center py-8">Loading...</p>
           ) : (
             resumes.map((resume) => (
-              <Card
+              <Link
                 key={resume.id}
-                title={resume.fullName}
-                description={resume.occupation ?? ''}
-                status={resume.published}
-              />
+                to={`/resumes/${resume.id}`}
+                className="block"
+              >
+                <Card
+                  title={resume.fullName}
+                  description={resume.occupation ?? ''}
+                  status={resume.published}
+                />
+              </Link>
             ))
           )}
         </div>
