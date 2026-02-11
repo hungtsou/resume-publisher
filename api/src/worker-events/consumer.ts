@@ -14,12 +14,17 @@ export async function startConsumer(): Promise<void> {
     clientId: 'resume-publisher-api',
     brokers: BOOTSTRAP_SERVERS.split(',').map((s) => s.trim()),
   });
-  consumer = kafka.consumer({ groupId: 'resume-publisher-api-consumer' });
+  // Use unique group ID per process so each API restart reads from beginning.
+  // The in-memory store is wiped on restart; without this, we'd skip already-committed
+  // messages and never repopulate the store.
+  const groupId = `resume-publisher-api-consumer-${Date.now()}`;
+  consumer = kafka.consumer({ groupId });
 
   for (let attempt = 1; attempt <= MAX_CONSUMER_ATTEMPTS; attempt++) {
     try {
       await consumer.connect();
       await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+      console.log(`Worker events consumer connected to ${BOOTSTRAP_SERVERS}, topic ${TOPIC}, groupId ${groupId}`);
       await consumer.run({
         eachMessage: async ({ message }) => {
           const value = message.value?.toString();
@@ -35,8 +40,8 @@ export async function startConsumer(): Promise<void> {
               timestamp: payload.timestamp ?? new Date().toISOString(),
             });
             console.log(`Worker event received: ${payload.event} ${payload.step} - ${payload.message}`);
-          } catch {
-            // Skip malformed messages
+          } catch (err) {
+            console.error('Worker event parse failed:', err instanceof Error ? err.message : err, 'raw:', value?.slice(0, 200));
           }
         },
       });
@@ -44,7 +49,7 @@ export async function startConsumer(): Promise<void> {
     } catch (err) {
       await consumer.disconnect().catch(() => {});
       consumer = null;
-      consumer = kafka.consumer({ groupId: 'resume-publisher-api-consumer' });
+      consumer = kafka.consumer({ groupId });
       if (attempt === MAX_CONSUMER_ATTEMPTS) throw err;
       console.warn(
         `Worker events consumer attempt ${attempt}/${MAX_CONSUMER_ATTEMPTS} failed (e.g. group coordinator not ready), retrying in ${CONSUMER_RETRY_DELAY_MS}ms:`,

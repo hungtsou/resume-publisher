@@ -17,3 +17,8 @@ export function getAll(): WorkerEvent[] {
 export function getByWorkflowId(workflowId: string): WorkerEvent[] {
   return events.filter((e) => e.workflowId === workflowId);
 }
+
+export function getStoreStats(): { total: number; workflowIds: string[] } {
+  const ids = [...new Set(events.map((e) => e.workflowId).filter(Boolean))];
+  return { total: events.length, workflowIds: ids };
+}

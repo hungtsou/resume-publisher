@@ -42,19 +42,30 @@ function getWorkflowIds(): { workflowId: string; runId: string } {
 
 async function emit(event: string, step: string, message: string): Promise<void> {
   const { workflowId, runId } = getWorkflowIds();
+  const payload = {
+    workflowId,
+    runId,
+    event,
+    step,
+    message,
+    timestamp: new Date().toISOString(),
+  };
   try {
-    await publishEvent({
-      workflowId,
-      runId,
-      event,
-      step,
-      message,
-      timestamp: new Date().toISOString(),
-    });
+    await publishEvent(payload);
   } catch (err) {
     // Non-fatal: do not fail the activity if Kafka is unavailable
     const msg = err instanceof Error ? err.message : String(err);
     console.warn('Event publisher send failed:', msg, err);
+  }
+  try {
+    await fetch(`${API_URL}/api/worker-events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('Event HTTP push failed:', msg);
   }
 }
 
@@ -130,6 +141,6 @@ export async function updateResume(id: string, resumeData: CreateResumeInput): P
     throw new Error(`updateResume failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ''}`);
   }
   const { resume } = (await response.json()) as { resume: ResumeData };
-  await emit('activity_completed', 'updateResume', `Resume updated: ${resume.id}`);
+  await emit('activity_completed', 'resumePublished', `Resume updated: ${resume.id}`);
   return resume;
 }

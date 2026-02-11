@@ -127,6 +127,8 @@ echo '{"event":"test","step":"manual","message":"hello"}' | docker exec -i resum
 
 You should see that line appear in the consumer terminal. If it does, Kafka and the consumer are fine—check temporal-worker logs for `Event publisher Kafka bootstrap servers:` (should be `kafka:9092`), `Event publisher (Kafka) connected`, and either `Event published to Kafka:` or `Event publisher send failed:` when you submit a resume.
 
+**Event logs not appearing in UI:** The worker pushes events to the API via HTTP (POST /api/worker-events) in addition to Kafka, so event logs work even when the Kafka consumer has issues (e.g. "group coordinator not available"). Ensure the worker can reach the API (`API_URL` / `http://api:3000` in Docker). The Resumes page gets `workflowId` from navigation state after submit; a page refresh loses it. Use `GET /api/worker-events?debug=1` to verify the store has events.
+
 ### Production Build
 
 Build all projects:

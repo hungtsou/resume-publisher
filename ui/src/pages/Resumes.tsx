@@ -3,29 +3,52 @@ import { useState, useEffect } from 'react';
 import { getResumes } from '../services/resume-publisher';
 import type { Resume, ResumeFormData } from '../components/resume-form/types';
 import Card from '../components/Card';
+import { getEventLogs } from '../services/event-logs';
 
 type ListItem =
   | { type: 'api'; data: Resume }
   | { type: 'submitted'; data: ResumeFormData };
 
+const PUBLISH_COMPLETE_STEPS = ['resumePublish', 'resumePublished'];
+
 function Resumes() {
   const [apiResumes, setApiResumes] = useState<Resume[]>([]);
-
+  const [publishComplete, setPublishComplete] = useState(false);
   const { state } = useLocation();
   const submittedResume = (state as { submittedResume?: ResumeFormData } | null)
     ?.submittedResume;
+  const workflowId = (state as { workflowId?: string } | null)
+    ?.workflowId;
+
+  const fetchResumes = async () => {
+    const response = await getResumes();
+    const sortedResumes = (response.resumes as Resume[]).reverse();
+    setApiResumes(sortedResumes);
+  };
 
   useEffect(() => {
-    const fetchResumes = async () => {
-      const response = await getResumes();
-      const sortedResumes = (response.resumes as Resume[]).reverse();
-      setApiResumes(sortedResumes);
-    };
     fetchResumes();
   }, []);
 
+  useEffect(() => {
+    if (!workflowId || publishComplete) return;
+    const fetchEventLogs = async () => {
+      const events = await getEventLogs(workflowId);
+      const hasPublishComplete = events.some(
+        (e: { step?: string }) => e.step && PUBLISH_COMPLETE_STEPS.includes(e.step)
+      );
+      if (hasPublishComplete) {
+        setPublishComplete(true);
+        await fetchResumes();
+      }
+    };
+    fetchEventLogs();
+    const intervalId = setInterval(fetchEventLogs, 5000);
+    return () => clearInterval(intervalId);
+  }, [workflowId, publishComplete]);
+
   const items: ListItem[] = [
-    ...(submittedResume
+    ...(submittedResume && !publishComplete
       ? [{ type: 'submitted' as const, data: submittedResume }]
       : []),
     ...apiResumes.map((r) => ({ type: 'api' as const, data: r })),

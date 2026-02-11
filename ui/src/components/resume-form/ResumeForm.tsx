@@ -40,8 +40,9 @@ export function ResumeForm() {
   });
 
   const onSubmit = async (data: ResumeFormData) => {
-    await publishResume(data);
-    navigate('/resumes', { state: { submittedResume: data } });
+    const response = await publishResume(data);
+    console.log(response);
+    navigate('/resumes', { state: { submittedResume: data, workflowId: response.workflowId } });
   };
 
   return (
