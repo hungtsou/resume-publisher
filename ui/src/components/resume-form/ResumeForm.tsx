@@ -41,7 +41,7 @@ export function ResumeForm() {
 
   const onSubmit = async (data: ResumeFormData) => {
     await publishResume(data);
-    navigate('/resumes');
+    navigate('/resumes', { state: { submittedResume: data } });
   };
 
   return (
