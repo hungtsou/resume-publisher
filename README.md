@@ -285,50 +285,66 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 │  │                                                                    │  │
 │  │  Routes & Controllers:                                              │  │
 │  │  ┌─────────────────────┐    ┌─────────────────────────────┐       │  │
-│  │  │ POST /api/publish-  │───▶│ Publish Resume Controller   │       │  │
-│  │  │      resume         │    │ (starts publishResume       │       │  │
+│  │  │ POST /api/publish-   │───▶│ Publish Resume Controller   │       │  │
+│  │  │      resume          │    │ (starts publishResume       │       │  │
 │  │  └─────────────────────┘    │  workflow via Temporal)     │       │  │
 │  │                              └──────────────┬──────────────┘       │  │
 │  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
 │  │  │ GET /api/worker-     │───▶│ Worker Events Controller    │       │  │
-│  │  │     events          │    │ (events from Kafka consumer) │       │  │
+│  │  │     events           │    │ (events from Kafka consumer)│       │  │
 │  │  └─────────────────────┘    └─────────────────────────────┘       │  │
-│  │  ┌─────────────────────┐    ┌──────────────────────────────┐      │  │
-│  │  │ POST/GET /api/resume│───▶│ Resume Controller           │       │  │
+│  │  ┌─────────────────────┐    ┌──────────────────────────────────┐  │  │
+│  │  │ POST/GET/PUT        │───▶│ Resume Controller                 │  │  │
+│  │  │ /api/resume         │    │ (create, getById, getAll, update)  │  │  │
+│  │  └─────────────────────┘    └──────────────┬───────────────────┘  │  │
+│  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
+│  │  │ POST/GET /api/user   │───▶│ User Controller              │       │  │
 │  │  └─────────────────────┘    │ (create, getById, getAll)    │       │  │
 │  │                              └──────────────┬──────────────┘       │  │
 │  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
-│  │  │ POST/GET /api/user  │───▶│ User Controller              │       │  │
-│  │  └─────────────────────┘    │ (create, getById, getAll)   │       │  │
-│  │                              └──────────────┬──────────────┘       │  │
-│  │  ┌─────────────────────┐    ┌──────────────▼──────────────┐       │  │
-│  │  │ GET /api/check       │───▶│ Check Controller            │       │  │
-│  │  └─────────────────────┘    └─────────────────────────────┘       │  │
+│  │  │ GET /api/check        │───▶│ Check Controller             │       │  │
+│  │  └─────────────────────┘    │ (health check)                │       │  │
+│  │                              └─────────────────────────────┘       │  │
 │  │                                                                    │  │
-│  │  ┌─────────────────────┐         ┌─────────────────────┐          │  │
-│  │  │ Temporal Client     │         │ Database Client     │          │  │
-│  │  └──────────┬──────────┘         └──────────┬──────────┘          │  │
-│  └─────────────┼────────────────────────────────┼─────────────────────┘  │
-└────────────────┼────────────────────────────────┼───────────────────────┘
-                 │ gRPC                            │ SQL
-                 │                                 │
-┌────────────────▼────────────────────────────────▼───────────────────────┐
-│                         WORKFLOW LAYER                                    │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  Temporal Server  (Port: 7233 gRPC / 8233 Web UI)                  │  │
-│  └────────────────────────────┬───────────────────────────────────────┘  │
-│                               │ Task Queue                                │
+│  │  ┌─────────────────────┐    ┌─────────────────────┐                │  │
+│  │  │ Temporal Client     │    │ Kafka Consumer      │                │  │
+│  │  └──────────┬──────────┘    │ (resume_publisher)  │                │  │
+│  │              │               └──────────▲──────────┘                │  │
+│  │  ┌───────────┴──────────┐   ┌───────────┴──────────┐                │  │
+│  │  │ Database Client      │   │                      │                │  │
+│  │  └──────────┬──────────┘   │                      │                │  │
+│  └─────────────┼──────────────┼──────────────────────┼────────────────┘  │
+└────────────────┼──────────────┼──────────────────────┼───────────────────┘
+                 │ gRPC         │ SQL                  │ consume
+                 │              │                      │
+┌────────────────▼──────────────▼──────────────────────┼───────────────────┐
+│                         WORKFLOW LAYER                │                   │
+│  ┌──────────────────────────────────────────────────┴───────────────┐   │
+│  │  Temporal Server  (Port: 7233 gRPC / 8233 Web UI)                │   │
+│  └────────────────────────────┬─────────────────────────────────────┘   │
+│                               │ Task Queue                               │
 │  ┌────────────────────────────▼───────────────────────────────────────┐  │
-│  │  Temporal Worker                                                     │  │
-│  │  ┌─────────────────────────┐   ┌─────────────────────────────────┐  │  │
-│  │  │ Workflows               │   │ Activities                      │  │  │
-│  │  │ - example               │   │ - greet                         │  │  │
-│  │  │   (greet)               │   │ - createUser → POST /api/user   │  │  │
-│  │  │ - publishResume         │   │ - createResume → POST /api/      │  │  │
-│  │  │   (createUser →         │   │   resume                        │  │  │
-│  │  │    createResume)        │   │                                 │  │  │
-│  │  └─────────────────────────┘   └─────────────────────────────────┘  │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
+│  │  Temporal Worker                                                    │  │
+│  │  ┌─────────────────────────┐   ┌─────────────────────────────────┐ │  │
+│  │  │ Workflows               │   │ Activities                      │ │  │
+│  │  │ - example (greet)       │   │ - greet                         │ │  │
+│  │  │ - publishResumeWorkflow │   │ - createUser → POST /api/user    │ │  │
+│  │  │   (createUser →         │   │ - createResume → POST /api/      │ │  │
+│  │  │    createResume →       │   │   resume                        │ │  │
+│  │  │    updateResume)        │   │ - updateResume → PUT /api/       │ │  │
+│  │  └─────────────────────────┘   │   resume/:id                    │ │  │
+│  │                                 └──────────────┬──────────────────┘ │  │
+│  │                                 publish events │                    │  │
+│  └────────────────────────────────────────────────┼────────────────────┘  │
+└────────────────────────────────────────────────────┼───────────────────────┘
+                                                    │ produce (topic:
+                                                    │ resume_publisher)
+┌───────────────────────────────────────────────────▼───────────────────────┐
+│                         EVENT STREAM LAYER                                 │
+│  ┌──────────────────────────────────────────────────────────────────────┐ │
+│  │  Kafka (Port: 9092) - topic: resume_publisher                         │ │
+│  │  Worker publishes activity events; API consumes for worker-events    │ │
+│  └──────────────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────────────────────┘
          │ Activities call back to API (User + Resume controllers)
          ▼
@@ -337,7 +353,7 @@ Environment variables are automatically loaded from `api/.env` when using Docker
 │  ┌───────────────────────────────────────────────────────────────────┐  │
 │  │  PostgreSQL Database                                               │  │
 │  │  ┌──────────────────┐              ┌──────────────────┐           │  │
-│  │  │ User Schema      │              │ Resume Schema    │           │  │
+│  │  │ User Schema       │              │ Resume Schema     │           │  │
 │  │  └──────────────────┘              └──────────────────┘           │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -367,9 +383,9 @@ sequenceDiagram
 1. **UI** → User submits the resume form; frontend sends **POST /api/publish-resume** with resume data.
 2. **API** → Publish Resume Controller starts the `publishResume` Temporal workflow and returns **202 Accepted** with `workflowId` and `runId`.
 3. **Temporal** → Server schedules the workflow; the worker dequeues the task.
-4. **Temporal Worker** → Runs the `publishResume` workflow: calls **createUser** (POST /api/user), then **createResume** (POST /api/resume). For each activity it emits events (e.g. started, completed, failed) to **Kafka** topic `resume_publisher`.
+4. **Temporal Worker** → Runs the `publishResumeWorkflow`: calls **createUser** (POST /api/user), **createResume** (POST /api/resume), then **updateResume** (PUT /api/resume/:id). For each activity it emits events (e.g. started, completed, failed) to **Kafka** topic `resume_publisher`.
 5. **Kafka** → Receives worker events; the **API** consumes them via the worker-events module and stores them in an in-memory, bounded store.
-6. **API** → User and Resume controllers handle the worker’s HTTP calls and persist to **PostgreSQL**.
+6. **API** → User and Resume controllers handle the worker’s HTTP calls (createUser, createResume, updateResume) and persist to **PostgreSQL**.
 7. **API** → Clients can read worker progress via **GET /api/worker-events** (optional `?workflowId=` to filter by workflow).
 
 ### Component Interactions
@@ -377,10 +393,10 @@ sequenceDiagram
 1. **User submits resume form** → `ResumeForm` component collects data; frontend sends POST to `/api/publish-resume`.
 2. **Publish Resume Controller** → Receives request, starts the `publishResume` Temporal workflow via Temporal Client, returns 202 Accepted with `workflowId` and `runId`.
 3. **Temporal Server** → Schedules the workflow; worker picks up the task.
-4. **Temporal Worker** → Runs `publishResume` workflow, which executes activities in order: `createUser` (POST to `/api/user`), then `createResume` (POST to `/api/resume`). The worker publishes progress events to Kafka topic `resume_publisher`.
+4. **Temporal Worker** → Runs `publishResumeWorkflow`, which executes activities in order: `createUser` (POST to `/api/user`), `createResume` (POST to `/api/resume`), then `updateResume` (PUT to `/api/resume/:id`). The worker publishes progress events to Kafka topic `resume_publisher`.
 5. **Kafka** → Holds worker events; the API’s worker-events consumer reads from `resume_publisher` and stores events for **GET /api/worker-events**.
 6. **User Controller** → Handles POST `/api/user` from the worker’s `createUser` activity; creates user in PostgreSQL.
-7. **Resume Controller** → Handles POST `/api/resume` from the worker’s `createResume` activity; creates resume in PostgreSQL.
+7. **Resume Controller** → Handles POST `/api/resume` and PUT `/api/resume/:id` from the worker’s `createResume` and `updateResume` activities; creates and updates resume in PostgreSQL.
 8. **Database** → Stores users and resumes via the API’s User and Resume controllers.
 
 ## License
